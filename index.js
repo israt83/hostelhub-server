@@ -87,10 +87,18 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    const db = client.db('stayvista')
-    const roomsCollection = db.collection('rooms')
+
+    
+    
+    const db = client.db('hostelhub')
+    const mealsCollection = db.collection('meals')
     const usersCollection = db.collection('users')
     const bookingsCollection = db.collection('bookings')
+   
+    // const db = client.db('stayvista')
+    // const mealsCollection = db.collection('meals')
+    // const usersCollection = db.collection('users')
+    // const bookingsCollection = db.collection('bookings')
     // verify admin middleware
     const verifyAdmin = async (req, res, next) => {
       console.log('hello')
@@ -228,19 +236,19 @@ async function run() {
     })
 
     // Get all rooms from db
-    app.get('/rooms', async (req, res) => {
+    app.get('/meals', async (req, res) => {
       const category = req.query.category
       console.log(category)
       let query = {}
       if (category && category !== 'null') query = { category }
-      const result = await roomsCollection.find(query).toArray()
+      const result = await mealsCollection.find(query).toArray()
       res.send(result)
     })
 
     // Save a room data in db
     app.post('/room', verifyToken, verifyHost, async (req, res) => {
       const roomData = req.body
-      const result = await roomsCollection.insertOne(roomData)
+      const result = await mealsCollection.insertOne(roomData)
       res.send(result)
     })
 
