@@ -235,7 +235,7 @@ async function run() {
       res.send(result)
     })
 
-    // Get all rooms from db
+    // Get all meals from db
     app.get('/meals', async (req, res) => {
       const category = req.query.category
       console.log(category)
@@ -245,10 +245,10 @@ async function run() {
       res.send(result)
     })
 
-    // Save a room data in db
-    app.post('/room', verifyToken, verifyHost, async (req, res) => {
-      const roomData = req.body
-      const result = await mealsCollection.insertOne(roomData)
+    // Save a meal data in db
+    app.post('/meals', verifyToken, verifyHost, async (req, res) => {
+      const mealData = req.body
+      const result = await mealsCollection.insertOne(mealData)
       res.send(result)
     })
 
@@ -261,24 +261,24 @@ async function run() {
         const email = req.params.email
 
         let query = { 'host.email': email }
-        const result = await roomsCollection.find(query).toArray()
+        const result = await mealsCollection.find(query).toArray()
         res.send(result)
       }
     )
 
     // delete a room
-    app.delete('/room/:id', verifyToken, verifyHost, async (req, res) => {
+    app.delete('/meal/:id', verifyToken, verifyHost, async (req, res) => {
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
-      const result = await roomsCollection.deleteOne(query)
+      const result = await mealsCollection.deleteOne(query)
       res.send(result)
     })
 
     // Get a single room data from db using _id
-    app.get('/room/:id', async (req, res) => {
+    app.get('/meals/:id', async (req, res) => {
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
-      const result = await roomsCollection.findOne(query)
+      const result = await mealsCollection.findOne(query)
       res.send(result)
     })
 
