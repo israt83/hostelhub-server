@@ -8,11 +8,13 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 const jwt = require('jsonwebtoken')
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const port = process.env.PORT || 8000
+
+
 // const { Resend } = require('resend')
 // const resend = new Resend(api_key)
 // middleware
 const corsOptions = {
-  origin: ['http://localhost:5173', 'http://localhost:5174'],
+  origin: ['http://localhost:5173', 'http://localhost:5174' ,'http://localhost:5175'],
   credentials: true,
   optionSuccessStatus: 200,
 }
@@ -21,61 +23,82 @@ app.use(cors(corsOptions))
 app.use(express.json())
 app.use(cookieParser())
 
-// send email
-const sendEmail = (emailAddress, emailData) => {
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // Use `true` for port 465, `false` for all other ports
-    auth: {
-      user: process.env.TRANSPORTER_EMAIL,
-      pass: process.env.TRANSPORTER_PASS,
-    },
-  })
+// // send email
+// const sendEmail = (emailAddress, emailData) => {
+//   const transporter = nodemailer.createTransport({
+//     service: 'gmail',
+//     host: 'smtp.gmail.com',
+//     port: 587,
+//     secure: false, // Use `true` for port 465, `false` for all other ports
+//     auth: {
+//       user: process.env.TRANSPORTER_EMAIL,
+//       pass: process.env.TRANSPORTER_PASS,
+//     },
+//   })
 
-  // verify transporter
-  // verify connection configuration
-  transporter.verify(function (error, success) {
-    if (error) {
-      console.log(error)
-    } else {
-      console.log('Server is ready to take our messages')
-    }
-  })
-  const mailBody = {
-    from: `"StayVista" <${process.env.TRANSPORTER_EMAIL}>`, // sender address
-    to: emailAddress, // list of receivers
-    subject: emailData.subject, // Subject line
-    html: emailData.message, // html body
-  }
+//   // verify transporter
+//   // verify connection configuration
+//   transporter.verify(function (error, success) {
+//     if (error) {
+//       console.log(error)
+//     } else {
+//       console.log('Server is ready to take our messages')
+//     }
+//   })
+//   const mailBody = {
+//     from: `"StayVista" <${process.env.TRANSPORTER_EMAIL}>`, // sender address
+//     to: emailAddress, // list of receivers
+//     subject: emailData.subject, // Subject line
+//     html: emailData.message, // html body
+//   }
 
-  transporter.sendMail(mailBody, (error, info) => {
-    if (error) {
-      console.log(error)
-    } else {
-      console.log('Email Sent: ' + info.response)
-    }
-  })
-}
+//   transporter.sendMail(mailBody, (error, info) => {
+//     if (error) {
+//       console.log(error)
+//     } else {
+//       console.log('Email Sent: ' + info.response)
+//     }
+//   })
+// }
 
-// Verify Token Middleware
-const verifyToken = async (req, res, next) => {
-  const token = req.cookies?.token
-  console.log(token)
+// // Verify Token Middleware
+// const verifyToken = async (req, res, next) => {
+//   const token = req.cookies?.token
+//   console.log(token)
+//   if (!token) {
+//     return res.status(401).send({ message: 'unauthorized access' })
+//   }
+//   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+//     if (err) {
+//       console.log(err)
+//       return res.status(401).send({ message: 'unauthorized access' })
+//     }
+//     req.user = decoded
+//     next()
+//   })
+// }
+
+
+
+const verifyToken = (req, res, next) => {
+  // Extract token from cookies
+  const token = req.cookies.token;
+  console.log('Token from cookies:', token);
+  
   if (!token) {
-    return res.status(401).send({ message: 'unauthorized access' })
+    return res.status(401).json({ message: 'Unauthorized access' });
   }
+
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
-      console.log(err)
-      return res.status(401).send({ message: 'unauthorized access' })
+      console.error('JWT verification error:', err);
+      return res.status(401).json({ message: 'Unauthorized access' });
     }
-    req.user = decoded
-    next()
-  })
-}
-
+    
+    req.user = decoded;
+    next();
+  });
+};
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.nghfy93.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 const client = new MongoClient(uri, {
   serverApi: {
@@ -204,7 +227,7 @@ async function run() {
       const result = await usersCollection.updateOne(query, updateDoc, options)
       // welcome new user
       sendEmail(user?.email, {
-        subject: 'Welcome to Stayvista!',
+        subject: 'Welcome to HostelHub!',
         message: `Hope you will find you destination`,
       })
       res.send(result)
@@ -370,7 +393,7 @@ async function run() {
         .toArray()
 
       const totalUsers = await usersCollection.countDocuments()
-      const totalRooms = await roomsCollection.countDocuments()
+      const totalRooms = await mealsCollection.countDocuments()
       const totalPrice = bookingDetails.reduce(
         (sum, booking) => sum + booking.price,
         0
