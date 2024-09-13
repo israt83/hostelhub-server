@@ -94,6 +94,7 @@ async function run() {
   try {
     const db = client.db("hostelhub");
     const mealsCollection = db.collection("meals");
+    const upcomingMealsCollection = db.collection("upcomingMeals");
     const usersCollection = db.collection("users");
     const bookingsCollection = db.collection("bookings");
 
@@ -536,6 +537,37 @@ async function run() {
         guestSince: timestamp,
       });
     });
+
+  // upcomingmeals
+
+  app.get("/upcoming-meals",  async (req, res) => {
+    const result = await upcomingMealsCollection.find().toArray();
+    res.send(result);
+  });
+    app.post('/meals/:mealId/like',  async (req, res) => {
+      const { mealId } = req.params;
+      const { userId } = req.body;
+    
+      // Check if the user is premium
+      const user = await usersCollection.findOne({ _id: userId });
+      if (!['Silver', 'Gold', 'Platinum'].includes(user.subscription)) {
+        return res.status(403).send('Only premium users can like meals');
+      }
+    
+      // Check if the user has already liked the meal
+      const meal = await upcomingMealsCollection.findOne({ _id: mealId });
+      if (meal.likes.includes(userId)) {
+        return res.status(400).send('User has already liked this meal');
+      }
+    
+      // Add like to the meal
+      const result = await upcomingMealsCollection.updateOne(
+        { _id: mealId },
+        { $push: { likes: userId } }
+      );
+      res.send(result);
+    });
+    
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
