@@ -303,7 +303,7 @@ async function run() {
     app.get("/all-meals/", async (req, res) => {
       const email = req.params.email;
 
-      let query = { "admin.email": email };
+      // let query = { "admin.email": email };
       const result = await mealsCollection.find(query).toArray();
       res.send(result);
     });
