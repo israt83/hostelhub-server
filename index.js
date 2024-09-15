@@ -10,8 +10,6 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 8000;
 
 
-// const { Resend } = require('resend')
-// const resend = new Resend(api_key)
 // middleware
 const corsOptions = {
   origin: [
@@ -27,43 +25,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
-// // send email
-// const sendEmail = (emailAddress, emailData) => {
-//   const transporter = nodemailer.createTransport({
-//     service: 'gmail',
-//     host: 'smtp.gmail.com',
-//     port: 587,
-//     secure: false, // Use `true` for port 465, `false` for all other ports
-//     auth: {
-//       user: process.env.TRANSPORTER_EMAIL,
-//       pass: process.env.TRANSPORTER_PASS,
-//     },
-//   })
 
-//   // verify transporter
-//   // verify connection configuration
-//   transporter.verify(function (error, success) {
-//     if (error) {
-//       console.log(error)
-//     } else {
-//       console.log('Server is ready to take our messages')
-//     }
-//   })
-//   const mailBody = {
-//     from: `"StayVista" <${process.env.TRANSPORTER_EMAIL}>`, // sender address
-//     to: emailAddress, // list of receivers
-//     subject: emailData.subject, // Subject line
-//     html: emailData.message, // html body
-//   }
-
-//   transporter.sendMail(mailBody, (error, info) => {
-//     if (error) {
-//       console.log(error)
-//     } else {
-//       console.log('Email Sent: ' + info.response)
-//     }
-//   })
-// }
 
 // Verify Token Middleware
 const verifyToken = async (req, res, next) => {
@@ -97,12 +59,10 @@ async function run() {
     const mealsCollection = db.collection("meals");
     const upcomingMealsCollection = db.collection("upcomingMeals");
     const usersCollection = db.collection("users");
-    const bookingsCollection = db.collection("bookings");
+    const requestMealCollection = db.collection("request-meal");
+    
 
-    // const db = client.db('stayvista')
-    // const mealsCollection = db.collection('meals')
-    // const usersCollection = db.collection('users')
-    // const bookingsCollection = db.collection('bookings')
+    
     // verify admin middleware
     const verifyAdmin = async (req, res, next) => {
       console.log("hello");
@@ -115,20 +75,7 @@ async function run() {
 
       next();
     };
-    // verify host middleware
-    const verifyHost = async (req, res, next) => {
-      console.log("hello");
-      const user = req.user;
-      const query = { email: user?.email };
-      const result = await usersCollection.findOne(query);
-      console.log(result?.role);
-      if (!result || result?.role !== "host") {
-        return res.status(401).send({ message: "unauthorized access!!" });
-      }
-
-      next();
-    };
-
+  
     // auth related api
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -159,53 +106,7 @@ async function run() {
       }
     });
 
-    // // create-payment-intent
-    // app.post("/create-payment-intent", verifyToken, async (req, res) => {
-    //   const price = req.body.price;
-    //   const priceInCent = parseFloat(price) * 100;
-    //   if (!price || priceInCent < 1) return;
-    //   // generate clientSecret
-    //   const { client_secret } = await stripe.paymentIntents.create({
-    //     amount: priceInCent,
-    //     currency: "usd",
-    //     // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
-    //     automatic_payment_methods: {
-    //       enabled: true,
-    //     },
-    //   });
-    //   // send client secret as response
-    //   res.send({ clientSecret: client_secret });
-    // });
-
-    // Save payment details and assign badge
-app.post("/save-payment",  async (req, res) => {
-  const { packageName, amount, transactionId } = req.body;
-
-  try {
-    // Assume you have a User model and payment data model in the database
-    const user = await User.findById(req.user.id); // Assuming you are using JWT and have user data in the token
-    if (!user) return res.status(404).send('User not found');
-
-    // Save payment details
-    const payment = new Payment({
-      userId: user._id,
-      packageName,
-      amount,
-      transactionId,
-      date: new Date(),
-    });
-    await payment.save();
-
-    // Assign badge based on the package
-    user.membership = packageName;
-    await user.save();
-
-    res.status(200).send('Payment successful and badge assigned');
-  } catch (err) {
-    res.status(500).send('Error saving payment data');
-  }
-});
-
+    
 
     // save a user data in db
     app.put("/user", async (req, res) => {
@@ -260,7 +161,7 @@ app.post("/save-payment",  async (req, res) => {
     });
 
     //update a user role
-    app.patch("/users/update/:email", async (req, res) => {
+    app.patch("/users/update/:email", verifyToken,verifyAdmin, async (req, res) => {
       const email = req.params.email;
       const user = req.body;
       const query = { email };
@@ -288,59 +189,17 @@ app.post("/save-payment",  async (req, res) => {
       res.send(result);
     });
 
-
-
-    // Get all meals from db
-    // app.get("/all-meals", async (req, res) => {
-    //   const category = req.query.category;
-    //   const priceRange = req.query.priceRange;
-    //   const search = req.query.search;
-    //   const page = parseInt(req.query.page) || 1; // Default to page 1
-    //   const limit = parseInt(req.query.limit) || 5; // Number of items per page
-
-    //   let query = {};
-
-    //   if (search) {
-    //     query.title = { $regex: search, $options: "i" };
-    //   }
-
-    //   if (category) {
-    //     query.category = category;
-    //   }
-
-    //   if (priceRange) {
-    //     const priceParts = priceRange.split("-");
-    //     if (priceParts.length === 2) {
-    //       query.price = {
-    //         $gte: parseFloat(priceParts[0]),
-    //         $lte: parseFloat(priceParts[1]),
-    //       };
-    //     } else if (priceRange === "30") {
-    //       query.price = { $gte: 30 };
-    //     }
-    //   }
-
-    //   try {
-    //     const meals = await mealsCollection
-    //       .find(query)
-    //       .skip((page - 1) * limit)
-    //       .limit(limit)
-    //       .toArray();
-    //     res.send(meals);
-    //   } catch (error) {
-    //     console.error("Error fetching meals:", error);
-    //     res.status(500).send("Failed to retrieve meals data.");
-    //   }
-    // });
+  
+    
 
     app.get("/all-meals", async (req, res) => {
       const category = req.query.category;
       const priceRange = req.query.priceRange;
       const search = req.query.search;
-      const sortBy = req.query.sortBy || 'likes'; // Sorting by likes by default
+      const sortBy = req.query.sortBy || "likes"; // Sorting by likes by default
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 5;
-    
+
       let query = {};
       if (search) {
         query.title = { $regex: search, $options: "i" };
@@ -359,14 +218,14 @@ app.post("/save-payment",  async (req, res) => {
           query.price = { $gte: 30 };
         }
       }
-    
+
       let sortQuery = {};
-      if (sortBy === 'likes') {
+      if (sortBy === "likes") {
         sortQuery.likes = -1; // Sorting by likes in descending order
-      } else if (sortBy === 'reviews') {
+      } else if (sortBy === "reviews") {
         sortQuery.reviews = -1; // Sorting by reviews in descending order
       }
-    
+
       try {
         const meals = await mealsCollection
           .find(query)
@@ -374,31 +233,28 @@ app.post("/save-payment",  async (req, res) => {
           .skip((page - 1) * limit)
           .limit(limit)
           .toArray();
-        
+
         const totalMeals = await mealsCollection.countDocuments(query);
-    
+
         res.send({ meals, totalMeals });
       } catch (error) {
         console.error("Error fetching meals:", error);
         res.status(500).send("Failed to retrieve meals data.");
       }
     });
-    
-    
 
-    
     // Get all meals data count from db
-    app.get('/meals-count', async (req, res) => {
-      const filter = req.query.filter
-      const search = req.query.search
+    app.get("/meals-count", async (req, res) => {
+      const filter = req.query.filter;
+      const search = req.query.search;
       let query = {
-        title: { $regex: search, $options: 'i' },
-      }
-      if (filter) query.category = filter
-      const count = await mealsCollection.countDocuments(query)
+        title: { $regex: search, $options: "i" },
+      };
+      if (filter) query.category = filter;
+      const count = await mealsCollection.countDocuments(query);
 
-      res.send({ count })
-    })
+      res.send({ count });
+    });
 
     // get all rooms for host
     app.get("/all-meals/", async (req, res) => {
@@ -409,100 +265,64 @@ app.post("/save-payment",  async (req, res) => {
       res.send(result);
     });
 
- 
-app.delete('/meals/:id', async (req, res) => {
-  const id = req.params.id;
-  const query = { _id: new ObjectId(id) };
-  try {
-    const result = await mealsCollection.deleteOne(query);
-    if (result.deletedCount === 1) {
-      res.status(200).send({ message: 'Meal deleted successfully' });
-    } else {
-      res.status(404).send({ message: 'Meal not found' });
-    }
-  } catch (error) {
-    res.status(500).send({ error: 'Failed to delete meal' });
-  }
-});
+    app.delete("/meals/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      try {
+        const result = await mealsCollection.deleteOne(query);
+        if (result.deletedCount === 1) {
+          res.status(200).send({ message: "Meal deleted successfully" });
+        } else {
+          res.status(404).send({ message: "Meal not found" });
+        }
+      } catch (error) {
+        res.status(500).send({ error: "Failed to delete meal" });
+      }
+    });
 
     // Get a single room data from db using _id
     app.get("/meals/:id", async (req, res) => {
       const id = req.params.id;
-     
+
       const query = { _id: new ObjectId(id) };
-     
-     
+
       const result = await mealsCollection.findOne(query);
       res.send(result);
     });
 
-   
-    
-    app.patch('/meals/:id', async (req, res) => {
+    app.patch("/meals/:id", async (req, res) => {
       const id = req.params.id;
       const { email } = req.body; // Get the user email from the request
       const filter = { _id: new ObjectId(id) };
-    
+
       // Ensure that the 'like' field is numeric
       const meal = await mealsCollection.findOne(filter);
-      if (typeof meal.like !== 'number') {
-        await mealsCollection.updateOne(filter, { $set: { like: 0, likedUsers: [] } });
+      if (typeof meal.like !== "number") {
+        await mealsCollection.updateOne(filter, {
+          $set: { like: 0, likedUsers: [] },
+        });
       }
-    
+
       // Check if the user has already liked the meal
       if (meal.likedUsers && meal.likedUsers.includes(email)) {
-        return res.status(400).json({ message: 'User has already liked this meal.' });
+        return res
+          .status(400)
+          .json({ message: "User has already liked this meal." });
       }
-    
+
       // Increment the like count by 1 and add the user to the likedUsers list
       const updateDoc = {
         $inc: { like: 1 },
         $push: { likedUsers: email }, // Add the user's email to the likedUsers array
       };
-    
+
       const result = await mealsCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
 
-
-
-
-
-
-
-// // GET: Fetch all reviews for a specific meal
-// app.get('/meals/:id', async (req, res) => {
-//   const mealId = req.params.id;
-
-//   try {
-//     const reviews = await reviewsCollection.find({ mealId: new ObjectId(mealId) }).toArray();
-//     res.send(reviews);
-//   } catch (error) {
-//     res.status(500).send({ message: 'Error fetching reviews', error });
-//   }
-// });
-
-    // Save a booking data in db
-    app.post("/booking", verifyToken, async (req, res) => {
-      const bookingData = req.body;
-      // save room booking info
-      const result = await bookingsCollection.insertOne(bookingData);
-      // send email to guest
-      sendEmail(bookingData?.guest?.email, {
-        subject: "Booking Successful!",
-        message: `You've successfully booked a room through StayVista. Transaction Id: ${bookingData.transactionId}`,
-      });
-      // send email to host
-      sendEmail(bookingData?.host?.email, {
-        subject: "Your room got booked!",
-        message: `Get ready to welcome ${bookingData.guest.name}.`,
-      });
-
-      res.send(result);
-    });
-
-    // update room data
-    app.put("/meals/update/:id",  async (req, res) => {
+    
+    // update meal data
+    app.put("/meals/update/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const mealData = req.body;
       const query = { _id: new ObjectId(id) };
@@ -513,189 +333,90 @@ app.delete('/meals/:id', async (req, res) => {
       res.send(result);
     });
 
-    // update Room Status
-    app.patch("/room/status/:id", async (req, res) => {
-      const id = req.params.id;
-      const status = req.body.status;
-      // change room availability status
-      const query = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: { booked: status },
-      };
-      const result = await roomsCollection.updateOne(query, updateDoc);
-      res.send(result);
-    });
 
-    // get all booking for a guest
-    app.get("/my-bookings/:email", verifyToken, async (req, res) => {
-      const email = req.params.email;
-      const query = { "guest.email": email };
-      const result = await bookingsCollection.find(query).toArray();
-      res.send(result);
-    });
+    
 
-    // get all booking for a host
-    app.get(
-      "/manage-bookings/:email",
-      verifyToken,
-      verifyHost,
-      async (req, res) => {
-        const email = req.params.email;
-        const query = { "host.email": email };
-        const result = await bookingsCollection.find(query).toArray();
+    // Save a request data in db
+    app.post("/request-meal", verifyToken, async (req, res) => {
+      const requestData = req.body;
+      console.log("Request data received:", requestData); // Debug log
+      try {
+        const result = await requestMealCollection.insertOne(requestData);
         res.send(result);
+      } catch (error) {
+        console.error("Error saving meal request:", error);
+        res.status(500).send({ error: "Unable to save meal request." });
       }
-    );
+    });
 
-    // delete a booking
-    app.delete("/booking/:id", verifyToken, async (req, res) => {
+    // Get all requests for a guest based on email
+    app.get("/my-request/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+
+      try {
+        const result = await requestMealCollection.find(query).toArray();
+
+        // Send the filtered result
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching requests for the guest:", error);
+        res
+          .status(500)
+          .send({ error: "Unable to fetch requests for the specified guest." });
+      }
+    });
+
+   
+
+    
+    // Get all meal requests for an admin based on their email
+    app.get("/manage-serve-meal/:email", verifyToken,verifyAdmin, async (req, res) => {
+      const email = req.params.email; // Extract the email from request params
+      const query = { "admin.email": email }; // Filter by admin's email
+     
+      try {
+        const result = await requestMealCollection.find().toArray(); // Apply query filter
+        res.send(result); // Send the result back to the client
+      } catch (error) {
+        console.error("Error fetching serve meals for the admin:", error);
+        res
+          .status(500)
+          .send({
+            error: "Unable to fetch serve meals for the specified admin.",
+          });
+      }
+    });
+
+    app.patch("/request-meal/:mealId", async (req, res) => {
+      // const mealId =  mongodb.ObjectId(req.params.mealId);
+      console.log("Updating meal ID:", mealId);
+      try {
+        const result = await requestMealCollection.updateOne(
+          { _id: mealId },
+          { $set: { status: "Served" } }
+        );
+        console.log("Update result:", result);
+        res.send(result);
+      } catch (error) {
+        console.error("Error updating meal status:", error);
+        res.status(500).send({
+          error: "Unable to update meal status.",
+        });
+      }
+    });
+    
+
+    // delete a request
+    app.delete("/request-meal/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
-      const result = await bookingsCollection.deleteOne(query);
+      const result = await requestMealCollection.deleteOne(query);
       res.send(result);
     });
 
-    // Admin Statistics
-    app.get("/admin-stat", verifyToken, verifyAdmin, async (req, res) => {
-      const bookingDetails = await bookingsCollection
-        .find(
-          {},
-          {
-            projection: {
-              date: 1,
-              price: 1,
-            },
-          }
-        )
-        .toArray();
+    
 
-      const totalUsers = await usersCollection.countDocuments();
-      const totalRooms = await mealsCollection.countDocuments();
-      const totalPrice = bookingDetails.reduce(
-        (sum, booking) => sum + booking.price,
-        0
-      );
-      // const data = [
-      //   ['Day', 'Sales'],
-      //   ['9/5', 1000],
-      //   ['10/2', 1170],
-      //   ['11/1', 660],
-      //   ['12/11', 1030],
-      // ]
-      const chartData = bookingDetails.map((booking) => {
-        const day = new Date(booking.date).getDate();
-        const month = new Date(booking.date).getMonth() + 1;
-        const data = [`${day}/${month}`, booking?.price];
-        return data;
-      });
-      chartData.unshift(["Day", "Sales"]);
-      // chartData.splice(0, 0, ['Day', 'Sales'])
-
-      console.log(chartData);
-
-      console.log(bookingDetails);
-      res.send({
-        totalUsers,
-        totalRooms,
-        totalBookings: bookingDetails.length,
-        totalPrice,
-        chartData,
-      });
-    });
-
-    // Host Statistics
-    app.get("/host-stat", verifyToken, verifyHost, async (req, res) => {
-      const { email } = req.user;
-      const bookingDetails = await bookingsCollection
-        .find(
-          { "host.email": email },
-          {
-            projection: {
-              date: 1,
-              price: 1,
-            },
-          }
-        )
-        .toArray();
-
-      const totalRooms = await roomsCollection.countDocuments({
-        "host.email": email,
-      });
-      const totalPrice = bookingDetails.reduce(
-        (sum, booking) => sum + booking.price,
-        0
-      );
-      const { timestamp } = await usersCollection.findOne(
-        { email },
-        { projection: { timestamp: 1 } }
-      );
-
-      const chartData = bookingDetails.map((booking) => {
-        const day = new Date(booking.date).getDate();
-        const month = new Date(booking.date).getMonth() + 1;
-        const data = [`${day}/${month}`, booking?.price];
-        return data;
-      });
-      chartData.unshift(["Day", "Sales"]);
-      // chartData.splice(0, 0, ['Day', 'Sales'])
-
-      console.log(chartData);
-
-      console.log(bookingDetails);
-      res.send({
-        totalRooms,
-        totalBookings: bookingDetails.length,
-        totalPrice,
-        chartData,
-        hostSince: timestamp,
-      });
-    });
-
-    // Guest Statistics
-    app.get("/guest-stat", verifyToken, async (req, res) => {
-      const { email } = req.user;
-      const bookingDetails = await bookingsCollection
-        .find(
-          { "guest.email": email },
-          {
-            projection: {
-              date: 1,
-              price: 1,
-            },
-          }
-        )
-        .toArray();
-
-      const totalPrice = bookingDetails.reduce(
-        (sum, booking) => sum + booking.price,
-        0
-      );
-      const { timestamp } = await usersCollection.findOne(
-        { email },
-        { projection: { timestamp: 1 } }
-      );
-
-      const chartData = bookingDetails.map((booking) => {
-        const day = new Date(booking.date).getDate();
-        const month = new Date(booking.date).getMonth() + 1;
-        const data = [`${day}/${month}`, booking?.price];
-        return data;
-      });
-      chartData.unshift(["Day", "Sales"]);
-      // chartData.splice(0, 0, ['Day', 'Sales'])
-
-      console.log(chartData);
-
-      console.log(bookingDetails);
-      res.send({
-        totalBookings: bookingDetails.length,
-        totalPrice,
-        chartData,
-        guestSince: timestamp,
-      });
-    });
-
-    // upcomingmeals
 
     app.get("/upcoming-meals", async (req, res) => {
       const result = await upcomingMealsCollection.find().toArray();
@@ -741,21 +462,7 @@ app.get("/", (req, res) => {
   res.send("Hello from Hostel Management Server..");
 });
 
-// test email
-// app.get('/email', async (req, res) => {
-//   const { data, error } = await resend.emails.send({
-//     from: 'StayVista <onboarding@resend.dev>',
-//     to: ['xidode6213@acuxi.com'],
-//     subject: 'Hello World',
-//     html: '<strong>It works!</strong>',
-//   })
 
-//   if (error) {
-//     return console.error({ error })
-//   }
-
-//   res.send({ data })
-// })
 
 app.listen(port, () => {
   console.log(`Hostel Management is running on port ${port}`);
