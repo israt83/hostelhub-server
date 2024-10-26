@@ -517,23 +517,37 @@ async function run() {
       }
     });
 
+    // // Get all requests for a guest based on email
+    // app.get("/my-request/:email", verifyToken, async (req, res) => {
+    //   const email = req.params.email;
+    //   const query = { email };
+
+    //   try {
+    //     const result = await requestMealCollection.find(query).toArray();
+
+    //     // Send the filtered result
+    //     res.send(result);
+    //   } catch (error) {
+    //     console.error("Error fetching requests for the guest:", error);
+    //     res
+    //       .status(500)
+    //       .send({ error: "Unable to fetch requests for the specified guest." });
+    //   }
+    // });
     // Get all requests for a guest based on email
-    app.get("/my-request/:email", verifyToken, async (req, res) => {
-      const email = req.params.email;
-      const query = { email };
+app.get("/my-request/:email", verifyToken, async (req, res) => {
+  const email = req.params.email;
+  const query = { email };
 
-      try {
-        const result = await requestMealCollection.find(query).toArray();
+  try {
+    const result = await requestMealCollection.find(query).toArray();
+    res.send(result);
+  } catch (error) {
+    console.error("Error fetching requests for the guest:", error);
+    res.status(500).send({ error: "Unable to fetch requests for the specified guest." });
+  }
+});
 
-        // Send the filtered result
-        res.send(result);
-      } catch (error) {
-        console.error("Error fetching requests for the guest:", error);
-        res
-          .status(500)
-          .send({ error: "Unable to fetch requests for the specified guest." });
-      }
-    });
 
     // Get all meal requests for an admin based on their email
     app.get(
@@ -631,17 +645,7 @@ async function run() {
 
 
 
-// // update meal data
-// app.put("/upcoming-meals/update/:id", verifyToken, async (req, res) => {
-//   const id = req.params.id;
-//   const mealData = req.body;
-//   const query = { _id: new ObjectId(id) };
-//   const updateDoc = {
-//     $set: mealData,
-//   };
-//   const result = await upcomingMealsCollection.updateOne(query, updateDoc);
-//   res.send(result);
-// });
+
 
 app.patch("/upcoming-meals/:id", async (req, res) => {
   const id = req.params.id;
@@ -713,44 +717,75 @@ app.put("/upcoming-meals/update/:id", async (req, res) => {
   }
 });
 
-    app.post("/upcoming-meals/:id", async (req, res) => {
-      const id = req.params.id; // Correctly referencing meal ID
-      const { email } = req.body;
-    
-      try {
-        // Validate the ObjectId format
-        if (!ObjectId.isValid(id)) {
-          return res.status(400).send("Invalid meal ID.");
-        }
-    
-        // Find the meal by ID
-        const meal = await upcomingMealsCollection.findOne({ _id: new ObjectId(id) });
-    
-        if (!meal) {
-          return res.status(404).send("Meal not found.");
-        }
-    
-        // Check if the user has already liked the meal by email
-        const alreadyLiked = meal.likedUsers.includes(email);
-        if (alreadyLiked) {
-          return res.status(400).send("You have already liked this meal.");
-        }
-    
-        // Add the email to the meal's likes array and increment like count
-        await upcomingMealsCollection.updateOne(
-          { _id: new ObjectId(id) }, // Filter to update the correct meal
-          {
-            $inc: { like: 1 },
-            $push: { likedUsers: email }
-          }
-        );
-    
-        res.send({ message: "Like added successfully!" });
-      } catch (error) {
-        console.error("Error liking meal:", error);
-        res.status(500).send("Error liking meal.");
+
+app.post("/upcoming-meals/:id", async (req, res) => {
+  const mealId = req.params.id;
+  const { email } = req.body;
+
+  if (!ObjectId.isValid(mealId)) {
+    return res.status(400).send({ error: "Invalid meal ID" });
+  }
+
+  try {
+    const meal = await upcomingMealsCollection.findOne({ _id: new ObjectId(mealId) });
+    if (!meal) return res.status(404).send({ error: "Meal not found" });
+
+    if (meal.likedUsers?.includes(email)) {
+      return res.status(400).send("You have already liked this meal.");
+    }
+
+    await upcomingMealsCollection.updateOne(
+      { _id: new ObjectId(mealId) },
+      {
+        $inc: { like: 1 },
+        $push: { likedUsers: email }
       }
-    });
+    );
+
+    res.send({ message: "Like added successfully!" });
+  } catch (error) {
+    res.status(500).send("Error liking meal.");
+  }
+});
+
+    // app.post("/upcoming-meals/:id", async (req, res) => {
+    //   const id = req.params.id; // Correctly referencing meal ID
+    //   const { email } = req.body;
+    
+    //   try {
+    //     // Validate the ObjectId format
+    //     if (!ObjectId.isValid(id)) {
+    //       return res.status(400).send("Invalid meal ID.");
+    //     }
+    
+    //     // Find the meal by ID
+    //     const meal = await upcomingMealsCollection.findOne({ _id: new ObjectId(id) });
+    
+    //     if (!meal) {
+    //       return res.status(404).send("Meal not found.");
+    //     }
+    
+    //     // Check if the user has already liked the meal by email
+    //     const alreadyLiked = meal.likedUsers.includes(email);
+    //     if (alreadyLiked) {
+    //       return res.status(400).send("You have already liked this meal.");
+    //     }
+    
+    //     // Add the email to the meal's likes array and increment like count
+    //     await upcomingMealsCollection.updateOne(
+    //       { _id: new ObjectId(id) }, // Filter to update the correct meal
+    //       {
+    //         $inc: { like: 1 },
+    //         $push: { likedUsers: email }
+    //       }
+    //     );
+    
+    //     res.send({ message: "Like added successfully!" });
+    //   } catch (error) {
+    //     console.error("Error liking meal:", error);
+    //     res.status(500).send("Error liking meal.");
+    //   }
+    // });
 
  
     
