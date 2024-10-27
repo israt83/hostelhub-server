@@ -14,8 +14,8 @@ const corsOptions = {
   origin: [
     "http://localhost:5173",
     "http://localhost:5174",
-    "https://hostelhab.netlify.app",
-    "https://hostel-management-system-ef2f8.web.app",
+    "https://hostelhubs.netlify.app",
+    "https://hostel-management-system-ef2f8.firebaseapp.com",
   ],
   methods: ["POST", "GET", "PUT", "PATCH", "DELETE"],
   credentials: true,
@@ -848,7 +848,9 @@ app.post("/upcoming-meals/:id", async (req, res) => {
               quantity: 1,
             },
           ],
+          // success_url: `${process.env.CLIENT_URL}/complete?session_id={CHECKOUT_SESSION_ID}`,
           success_url: `${process.env.CLIENT_URL}/complete?session_id={CHECKOUT_SESSION_ID}`,
+
           cancel_url: `${process.env.CLIENT_URL}`,
           metadata: {
             email,
