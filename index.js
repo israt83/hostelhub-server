@@ -14,7 +14,7 @@ const corsOptions = {
   origin: [
     "http://localhost:5173",
     "http://localhost:5174",
-    "hostel-management-system-ef2f8.web.app",
+    "https://hostel-management-system-ef2f8.web.app",
   ],
   methods: ["POST", "GET", "PUT", "PATCH", "DELETE"],
   credentials: true,
@@ -949,10 +949,10 @@ app.get("/payment-history", async (req, res) => {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
   }
