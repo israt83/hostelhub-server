@@ -7,17 +7,12 @@ const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-const port = process.env.PORT || 8000;
+const port = process.env.PORT || 5000;
 
 // middleware
 const corsOptions = {
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "https://hostelhubs.netlify.app",
-    "https://hostel-management-system-ef2f8.firebaseapp.com",
-  ],
-  methods: ["POST", "GET", "PUT", "PATCH", "DELETE"],
+  origin: ["https://hostelhub-1b756.web.app","http://localhost:5174"],
+
   credentials: true,
   optionSuccessStatus: 200,
 };
@@ -29,40 +24,40 @@ app.use(cookieParser());
 // send email
 const sendEmail = (emailAddress, emailData) => {
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    host: 'smtp.gmail.com',
+    service: "gmail",
+    host: "smtp.gmail.com",
     port: 587,
     secure: false, // Use `true` for port 465, `false` for all other ports
     auth: {
       user: process.env.TRANSPORTER_EMAIL,
       pass: process.env.TRANSPORTER_PASS,
     },
-  })
+  });
 
   // verify transporter
   // verify connection configuration
   transporter.verify(function (error, success) {
     if (error) {
-      console.log(error)
+      console.log(error);
     } else {
-      console.log('Server is ready to take our messages')
+      console.log("Server is ready to take our messages");
     }
-  })
+  });
   const mailBody = {
     from: `"HostelHub" <${process.env.TRANSPORTER_EMAIL}>`, // sender address
     to: emailAddress, // list of receivers
     subject: emailData.subject, // Subject line
     html: emailData.message, // html body
-  }
+  };
 
   transporter.sendMail(mailBody, (error, info) => {
     if (error) {
-      console.log(error)
+      console.log(error);
     } else {
-      console.log('Email Sent: ' + info.response)
+      console.log("Email Sent: " + info.response);
     }
-  })
-}
+  });
+};
 
 // Verify Token Middleware
 const verifyToken = async (req, res, next) => {
@@ -95,11 +90,10 @@ async function run() {
     const upcomingMealsCollection = db.collection("upcomingMeals");
     const usersCollection = db.collection("users");
     const requestMealCollection = db.collection("request-meal");
-  
+
     const paymentDataCollection = client
       .db("hostelhub")
       .collection("paymentData");
-  
 
     // verify admin middleware
     const verifyAdmin = async (req, res, next) => {
@@ -230,7 +224,6 @@ async function run() {
       res.send(result);
     });
 
- 
     app.post("/meals/:id/reviews", async (req, res) => {
       const { text, userName, userEmail, userImage } = req.body.review;
       const mealId = req.params.id;
@@ -357,7 +350,6 @@ async function run() {
       }
     });
 
-
     app.get("/all-meals", async (req, res) => {
       const category = req.query.category;
       const priceRange = req.query.priceRange;
@@ -470,7 +462,6 @@ async function run() {
       const { email } = req.body;
       const filter = { _id: new ObjectId(id) };
 
-  
       const meal = await mealsCollection.findOne(filter);
       if (typeof meal.like !== "number") {
         await mealsCollection.updateOne(filter, {
@@ -486,7 +477,7 @@ async function run() {
 
       const updateDoc = {
         $inc: { like: 1 },
-        $push: { likedUsers: email }, 
+        $push: { likedUsers: email },
       };
 
       const result = await mealsCollection.updateOne(filter, updateDoc);
@@ -536,19 +527,20 @@ async function run() {
     //   }
     // });
     // Get all requests for a guest based on email
-app.get("/my-request/:email", verifyToken, async (req, res) => {
-  const email = req.params.email;
-  const query = { email };
+    app.get("/my-request/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
 
-  try {
-    const result = await requestMealCollection.find(query).toArray();
-    res.send(result);
-  } catch (error) {
-    console.error("Error fetching requests for the guest:", error);
-    res.status(500).send({ error: "Unable to fetch requests for the specified guest." });
-  }
-});
-
+      try {
+        const result = await requestMealCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching requests for the guest:", error);
+        res
+          .status(500)
+          .send({ error: "Unable to fetch requests for the specified guest." });
+      }
+    });
 
     // Get all meal requests for an admin based on their email
     app.get(
@@ -605,173 +597,173 @@ app.get("/my-request/:email", verifyToken, async (req, res) => {
       res.send(result);
     });
 
-  
-
- 
-
     app.get("/upcoming-meals", async (req, res) => {
       try {
-          const meals = await upcomingMealsCollection.find().toArray();
-          res.send(meals); // Check the output here
+        const meals = await upcomingMealsCollection.find().toArray();
+        res.send(meals); // Check the output here
       } catch (error) {
-          console.error("Error fetching meals:", error);
-          res.status(500).send({ error: "Server error while fetching meals" });
+        console.error("Error fetching meals:", error);
+        res.status(500).send({ error: "Server error while fetching meals" });
       }
-  });
-  
-    
-  app.get("/upcoming-meals/:id", async (req, res) => {
-    const id = req.params.id;
+    });
 
-    if (!ObjectId.isValid(id)) {
+    app.get("/upcoming-meals/:id", async (req, res) => {
+      const id = req.params.id;
+
+      if (!ObjectId.isValid(id)) {
         return res.status(400).send({ error: "Invalid meal ID" });
-    }
+      }
 
-    // Check if _id is stored as a string
-    const query = { _id: id }; // Use this if IDs are stored as strings
-    
-    try {
+      // Check if _id is stored as a string
+      const query = { _id: id }; // Use this if IDs are stored as strings
+
+      try {
         const result = await upcomingMealsCollection.findOne(query);
 
         if (!result) {
-            return res.status(404).send({ error: "Meal not found" });
+          return res.status(404).send({ error: "Meal not found" });
         }
 
         res.send(result);
-    } catch (error) {
+      } catch (error) {
         console.error("Error fetching meal:", error);
         res.status(500).send({ error: "Server error while fetching meal" });
-    }
-});
+      }
+    });
 
+    app.patch("/upcoming-meals/:id", async (req, res) => {
+      const id = req.params.id;
+      const { email } = req.body; // Get the user email from the request
 
+      // Ensure the ID is valid
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).json({ error: "Invalid meal ID" });
+      }
 
+      const filter = { _id: new ObjectId(id) };
 
+      try {
+        // Find the meal
+        const meal = await upcomingMealsCollection.findOne(filter);
 
-app.patch("/upcoming-meals/:id", async (req, res) => {
-  const id = req.params.id;
-  const { email } = req.body; // Get the user email from the request
-
-  // Ensure the ID is valid
-  if (!ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "Invalid meal ID" });
-  }
-
-  const filter = { _id: new ObjectId(id) };
-
-  try {
-      // Find the meal
-      const meal = await upcomingMealsCollection.findOne(filter);
-
-      // Check if the meal exists
-      if (!meal) {
+        // Check if the meal exists
+        if (!meal) {
           return res.status(404).json({ error: "Meal not found" });
-      }
+        }
 
-      // Ensure that the 'like' field is numeric; initialize if not
-      if (typeof meal.like !== "number") {
+        // Ensure that the 'like' field is numeric; initialize if not
+        if (typeof meal.like !== "number") {
           await upcomingMealsCollection.updateOne(filter, {
-              $set: { like: 0, likedUsers: [] },
+            $set: { like: 0, likedUsers: [] },
           });
-      }
+        }
 
-      // Check if the user has already liked the meal
-      if (meal.likedUsers && meal.likedUsers.includes(email)) {
-          return res.status(400).json({ message: "User has already liked this meal." });
-      }
+        // Check if the user has already liked the meal
+        if (meal.likedUsers && meal.likedUsers.includes(email)) {
+          return res
+            .status(400)
+            .json({ message: "User has already liked this meal." });
+        }
 
-      // Increment the like count by 1 and add the user to the likedUsers list
-      const updateDoc = {
+        // Increment the like count by 1 and add the user to the likedUsers list
+        const updateDoc = {
           $inc: { like: 1 },
           $push: { likedUsers: email }, // Add the user's email to the likedUsers array
+        };
+
+        const result = await upcomingMealsCollection.updateOne(
+          filter,
+          updateDoc
+        );
+        res.send(result);
+      } catch (error) {
+        console.error("Error updating likes:", error);
+        res.status(500).send({ error: "Server error while updating likes" });
+      }
+    });
+
+    // Update meal data
+    app.put("/upcoming-meals/update/:id", async (req, res) => {
+      const id = req.params.id;
+      const mealData = req.body;
+
+      // Ensure the ID is valid
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).json({ error: "Invalid meal ID" });
+      }
+
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: mealData,
       };
 
-      const result = await upcomingMealsCollection.updateOne(filter, updateDoc);
-      res.send(result);
-  } catch (error) {
-      console.error("Error updating likes:", error);
-      res.status(500).send({ error: "Server error while updating likes" });
-  }
-});
-
-// Update meal data
-app.put("/upcoming-meals/update/:id", async (req, res) => {
-  const id = req.params.id;
-  const mealData = req.body;
-
-  // Ensure the ID is valid
-  if (!ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "Invalid meal ID" });
-  }
-
-  const query = { _id: new ObjectId(id) };
-  const updateDoc = {
-      $set: mealData,
-  };
-
-  try {
-      const result = await upcomingMealsCollection.updateOne(query, updateDoc);
-      res.send(result);
-  } catch (error) {
-      console.error("Error updating meal:", error);
-      res.status(500).send({ error: "Server error while updating meal" });
-  }
-});
-
-
-app.post("/upcoming-meals/:id", async (req, res) => {
-  const mealId = req.params.id;
-  const { email } = req.body;
-
-  if (!ObjectId.isValid(mealId)) {
-    return res.status(400).send({ error: "Invalid meal ID" });
-  }
-
-  try {
-    const meal = await upcomingMealsCollection.findOne({ _id: new ObjectId(mealId) });
-    if (!meal) return res.status(404).send({ error: "Meal not found" });
-
-    if (meal.likedUsers?.includes(email)) {
-      return res.status(400).send("You have already liked this meal.");
-    }
-
-    await upcomingMealsCollection.updateOne(
-      { _id: new ObjectId(mealId) },
-      {
-        $inc: { like: 1 },
-        $push: { likedUsers: email }
+      try {
+        const result = await upcomingMealsCollection.updateOne(
+          query,
+          updateDoc
+        );
+        res.send(result);
+      } catch (error) {
+        console.error("Error updating meal:", error);
+        res.status(500).send({ error: "Server error while updating meal" });
       }
-    );
+    });
 
-    res.send({ message: "Like added successfully!" });
-  } catch (error) {
-    res.status(500).send("Error liking meal.");
-  }
-});
+    app.post("/upcoming-meals/:id", async (req, res) => {
+      const mealId = req.params.id;
+      const { email } = req.body;
+
+      if (!ObjectId.isValid(mealId)) {
+        return res.status(400).send({ error: "Invalid meal ID" });
+      }
+
+      try {
+        const meal = await upcomingMealsCollection.findOne({
+          _id: new ObjectId(mealId),
+        });
+        if (!meal) return res.status(404).send({ error: "Meal not found" });
+
+        if (meal.likedUsers?.includes(email)) {
+          return res.status(400).send("You have already liked this meal.");
+        }
+
+        await upcomingMealsCollection.updateOne(
+          { _id: new ObjectId(mealId) },
+          {
+            $inc: { like: 1 },
+            $push: { likedUsers: email },
+          }
+        );
+
+        res.send({ message: "Like added successfully!" });
+      } catch (error) {
+        res.status(500).send("Error liking meal.");
+      }
+    });
 
     // app.post("/upcoming-meals/:id", async (req, res) => {
     //   const id = req.params.id; // Correctly referencing meal ID
     //   const { email } = req.body;
-    
+
     //   try {
     //     // Validate the ObjectId format
     //     if (!ObjectId.isValid(id)) {
     //       return res.status(400).send("Invalid meal ID.");
     //     }
-    
+
     //     // Find the meal by ID
     //     const meal = await upcomingMealsCollection.findOne({ _id: new ObjectId(id) });
-    
+
     //     if (!meal) {
     //       return res.status(404).send("Meal not found.");
     //     }
-    
+
     //     // Check if the user has already liked the meal by email
     //     const alreadyLiked = meal.likedUsers.includes(email);
     //     if (alreadyLiked) {
     //       return res.status(400).send("You have already liked this meal.");
     //     }
-    
+
     //     // Add the email to the meal's likes array and increment like count
     //     await upcomingMealsCollection.updateOne(
     //       { _id: new ObjectId(id) }, // Filter to update the correct meal
@@ -780,16 +772,13 @@ app.post("/upcoming-meals/:id", async (req, res) => {
     //         $push: { likedUsers: email }
     //       }
     //     );
-    
+
     //     res.send({ message: "Like added successfully!" });
     //   } catch (error) {
     //     console.error("Error liking meal:", error);
     //     res.status(500).send("Error liking meal.");
     //   }
     // });
-
- 
-    
 
     // Publish a meal (move from upcomingMealsCollection to mealsCollection)
     app.post("/publish-meal/:id", async (req, res) => {
@@ -867,31 +856,30 @@ app.post("/upcoming-meals/:id", async (req, res) => {
     });
 
     // Route to get payment history of the logged-in user
-app.get("/payment-history", async (req, res) => {
-  const { email } = req.query;
+    app.get("/payment-history", async (req, res) => {
+      const { email } = req.query;
 
-  if (!email) {
-    return res.status(400).json({ error: "Email is required." });
-  }
+      if (!email) {
+        return res.status(400).json({ error: "Email is required." });
+      }
 
-  try {
-    // Fetch payment history from the collection
-    const payments = await paymentDataCollection.find({ email }).toArray();
+      try {
+        // Fetch payment history from the collection
+        const payments = await paymentDataCollection.find({ email }).toArray();
 
-    // If no payments found, return a relevant message
-    if (payments.length === 0) {
-      return res.status(404).json({ message: "No payment history found." });
-    }
+        // If no payments found, return a relevant message
+        if (payments.length === 0) {
+          return res.status(404).json({ message: "No payment history found." });
+        }
 
-    res.json(payments);
-  } catch (error) {
-    console.error("Error fetching payment history:", error);
-    res.status(500).json({ error: "Server error while fetching payment history." });
-  }
-});
-
-
-   
+        res.json(payments);
+      } catch (error) {
+        console.error("Error fetching payment history:", error);
+        res
+          .status(500)
+          .json({ error: "Server error while fetching payment history." });
+      }
+    });
 
     // Complete payment and save to database
     app.get("/complete", async (req, res) => {
@@ -952,10 +940,10 @@ app.get("/payment-history", async (req, res) => {
     });
 
     // Send a ping to confirm a successful connection
-    // await client.db("admin").command({ ping: 1 });
-    // console.log(
-    //   "Pinged your deployment. You successfully connected to MongoDB!"
-    // );
+    await client.db("admin").command({ ping: 1 });
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
   } finally {
     // Ensures that the client will close when you finish/error
   }
