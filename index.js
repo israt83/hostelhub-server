@@ -11,7 +11,8 @@ const port = process.env.PORT || 5000;
 
 // middleware
 const corsOptions = {
-  origin: ["https://hostelhub-1b756.web.app","http://localhost:5174"],
+  origin: ["http://localhost:5173","https://hostelhub-1b756.web.app"],
+
 
   credentials: true,
   optionSuccessStatus: 200,
