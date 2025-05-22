@@ -11,8 +11,7 @@ const port = process.env.PORT || 5000;
 
 // middleware
 const corsOptions = {
-  origin: ["http://localhost:5173","https://hostelhub-1b756.web.app"],
-
+  origin: ["http://localhost:5175", "https://hostelhub-1b756.web.app"],
 
   credentials: true,
   optionSuccessStatus: 200,
@@ -45,10 +44,10 @@ const sendEmail = (emailAddress, emailData) => {
     }
   });
   const mailBody = {
-    from: `"HostelHub" <${process.env.TRANSPORTER_EMAIL}>`, // sender address
-    to: emailAddress, // list of receivers
-    subject: emailData.subject, // Subject line
-    html: emailData.message, // html body
+    from: `"HostelHub" <${process.env.TRANSPORTER_EMAIL}>`,
+    to: emailAddress,
+    subject: emailData.subject,
+    html: emailData.message,
   };
 
   transporter.sendMail(mailBody, (error, info) => {
@@ -91,6 +90,8 @@ async function run() {
     const upcomingMealsCollection = db.collection("upcomingMeals");
     const usersCollection = db.collection("users");
     const requestMealCollection = db.collection("request-meal");
+
+    // const paymentDataCollection =db.collection("paymentData");
 
     const paymentDataCollection = client
       .db("hostelhub")
@@ -424,15 +425,6 @@ async function run() {
       res.send({ count });
     });
 
-    // // get all meals for host
-    // app.get("/all-meals/", async (req, res) => {
-    //   const email = req.params.email;
-
-    //   // let query = { "admin.email": email };
-    //   const result = await mealsCollection.find(query).toArray();
-    //   res.send(result);
-    // });
-
     app.delete("/meals/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -510,23 +502,6 @@ async function run() {
       }
     });
 
-    // // Get all requests for a guest based on email
-    // app.get("/my-request/:email", verifyToken, async (req, res) => {
-    //   const email = req.params.email;
-    //   const query = { email };
-
-    //   try {
-    //     const result = await requestMealCollection.find(query).toArray();
-
-    //     // Send the filtered result
-    //     res.send(result);
-    //   } catch (error) {
-    //     console.error("Error fetching requests for the guest:", error);
-    //     res
-    //       .status(500)
-    //       .send({ error: "Unable to fetch requests for the specified guest." });
-    //   }
-    // });
     // Get all requests for a guest based on email
     app.get("/my-request/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
@@ -742,45 +717,6 @@ async function run() {
       }
     });
 
-    // app.post("/upcoming-meals/:id", async (req, res) => {
-    //   const id = req.params.id; // Correctly referencing meal ID
-    //   const { email } = req.body;
-
-    //   try {
-    //     // Validate the ObjectId format
-    //     if (!ObjectId.isValid(id)) {
-    //       return res.status(400).send("Invalid meal ID.");
-    //     }
-
-    //     // Find the meal by ID
-    //     const meal = await upcomingMealsCollection.findOne({ _id: new ObjectId(id) });
-
-    //     if (!meal) {
-    //       return res.status(404).send("Meal not found.");
-    //     }
-
-    //     // Check if the user has already liked the meal by email
-    //     const alreadyLiked = meal.likedUsers.includes(email);
-    //     if (alreadyLiked) {
-    //       return res.status(400).send("You have already liked this meal.");
-    //     }
-
-    //     // Add the email to the meal's likes array and increment like count
-    //     await upcomingMealsCollection.updateOne(
-    //       { _id: new ObjectId(id) }, // Filter to update the correct meal
-    //       {
-    //         $inc: { like: 1 },
-    //         $push: { likedUsers: email }
-    //       }
-    //     );
-
-    //     res.send({ message: "Like added successfully!" });
-    //   } catch (error) {
-    //     console.error("Error liking meal:", error);
-    //     res.status(500).send("Error liking meal.");
-    //   }
-    // });
-
     // Publish a meal (move from upcomingMealsCollection to mealsCollection)
     app.post("/publish-meal/:id", async (req, res) => {
       const id = req.params.id;
@@ -806,7 +742,7 @@ async function run() {
 
     // Create checkout session
     app.post("/create-checkout-session", async (req, res) => {
-      const { package_name, price, email, badge_img } = req.body;
+      const { package_name, price, email, badge_img ,  name} = req.body;
       const formattedPrice = parseInt(Number(price) * 100); // Convert price to cents
 
       try {
@@ -843,6 +779,7 @@ async function run() {
 
           cancel_url: `${process.env.CLIENT_URL}`,
           metadata: {
+            name,
             email,
             package_name,
             badge_img,
@@ -896,6 +833,7 @@ async function run() {
         });
 
         const paymentData = {
+          name: session.metadata.name,
           email: session.metadata.email,
           package_name: session.metadata.package_name,
           badge_img: session.metadata.badge_img,
@@ -915,6 +853,19 @@ async function run() {
         res.status(500).json({ error: error.message });
       }
     });
+
+    // Get all payments
+app.get('/payments', async (req, res) => {
+  try {
+    const payments = await paymentDataCollection.find().toArray();
+    res.send(payments);
+  } catch (error) {
+    console.error('Error fetching payments:', error);
+    res.status(500).send({ error: 'Failed to fetch payments' });
+  }
+});
+
+
 
     // Get user subscriptions
     app.get("/user-subscriptions", async (req, res) => {
